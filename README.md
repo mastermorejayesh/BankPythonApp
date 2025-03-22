@@ -1,2 +1,2 @@
-# BankpPythonApp
+# BankPythonApp
 This is repo is based on python code created dummy bank website and command line...
