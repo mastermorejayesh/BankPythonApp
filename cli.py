@@ -1,12 +1,25 @@
 import mysql.connector
 import getpass
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Database credentials from .env file
+DB_HOST = os.getenv('DB_HOST')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_NAME = os.getenv('DB_NAME')
+
 
 # Database Connection
 conn = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="password",
-    database="bank_db"
+    host=DB_HOST,
+    user=DB_USER,
+    password=DB_PASSWORD,
+    database=DB_NAME
 )
 cursor = conn.cursor()
 
@@ -24,7 +37,7 @@ def initialize_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,11 +56,12 @@ def register():
     email = input("Enter your email: ")
     phone = input("Enter your phone number: ")
     password = getpass.getpass("Enter a password: ")
+    hashed_password = generate_password_hash(password, method='sha256')
     account_number = input("Enter a unique account number: ")
-    
+
     try:
-        cursor.execute("INSERT INTO customers (name, email, phone, password, account_number, balance) VALUES (%s, %s, %s, %s, %s, 0.00)", 
-                       (name, email, phone, password, account_number))
+        cursor.execute("INSERT INTO customers (name, email, phone, password, account_number, balance) VALUES (%s, %s, %s, %s, %s, 0.00)",
+                       (name, email, phone, hashed_password, account_number))
         conn.commit()
         print("Account successfully created!")
     except mysql.connector.Error as err:
@@ -56,11 +70,11 @@ def register():
 def login():
     account_number = input("Enter your account number: ")
     password = getpass.getpass("Enter your password: ")
-    
-    cursor.execute("SELECT * FROM customers WHERE account_number=%s AND password=%s", (account_number, password))
+
+    cursor.execute("SELECT * FROM customers WHERE account_number=%s", (account_number,))
     user = cursor.fetchone()
-    
-    if user:
+
+    if user and check_password_hash(user[4], password):  # user[4] is the password field
         print(f"Welcome {user[1]}!")
         banking_menu(account_number)
     else:
@@ -70,7 +84,7 @@ def banking_menu(account_number):
     while True:
         print("\n1. Check Balance\n2. Deposit Money\n3. Withdraw Money\n4. Transfer Money\n5. Exit")
         choice = input("Choose an option: ")
-        
+
         if choice == '1':
             check_balance(account_number)
         elif choice == '2':

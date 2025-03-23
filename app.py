@@ -1,25 +1,30 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import mysql.connector
 import getpass
 from werkzeug.security import generate_password_hash, check_password_hash
 import matplotlib.pyplot as plt
 import io
 import base64
-from flask import session
+import os
+from dotenv import load_dotenv
+
+
+# Initialize Flask app
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Secret key for sessions
+app.secret_key = os.getenv('SECRET_KEY')
 
-# Database Connection (Updated for Docker)
+# Database Connection
 conn = mysql.connector.connect(
-    host="localhost",  # The service name defined in docker-compose.yml for MySQL
-    user="root",
-    password="password",  # The root password defined in docker-compose.yml
-    database="bank_db"
+    host=os.getenv('DB_HOST'),
+    user=os.getenv('DB_USER'),
+    password=os.getenv('DB_PASSWORD'),
+    database=os.getenv('DB_NAME')
 )
 cursor = conn.cursor()
-
 # Function to create necessary tables
 def initialize_db():
     cursor.execute("""
@@ -158,21 +163,25 @@ def edit_account(account_number):
     return render_template('edit_account.html', account_number=account_number, user_data=user_data)
 # Admin page route (accessible after successful login)
 
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "password"  # Replace with actual password
+
+
 # Admin Login route
 @app.route('/admin_login', methods=['GET', 'POST'])
 def admin_login():
-    # Define the admin password (for simplicity, hardcoded here)
-    admin_password = 'admin123'  # Change this to your desired password
-
     if request.method == 'POST':
+        username = request.form['username']
         password = request.form['password']
 
-        if password == admin_password:
-            return redirect(url_for('admin_page'))  # Redirect to admin page if correct password
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_page'))  # Redirect to admin dashboard
         else:
-            return render_template('admin_login.html', message="Incorrect password. Please try again.")
+            flash("Invalid credentials!", "error")
 
     return render_template('admin_login.html')
+
 
 @app.route('/admin', methods=['GET'])
 def admin_page():
